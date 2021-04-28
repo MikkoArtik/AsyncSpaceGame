@@ -11,7 +11,9 @@ MIN_STARS_COUNT = 50
 MAX_STARS_COUNT = 200
 
 
-async def blink(canvas, row, column, symbol='*'):
+async def blink(canvas, row, column, sleeping_time, symbol='*'):
+  for _ in range(sleeping_time):
+    await asyncio.sleep(0)
   while True:
     canvas.addstr(row, column, symbol, curses.A_DIM)
     for _ in range(20):
@@ -85,8 +87,9 @@ def random_stars(canvas):
     col = random.randint(1, col_max-2)
     coords.append((row, col))
   
-  coroutines = [blink(canvas, coords[x][0], coords[x][1], random.choice(SYMBOLS)) for x in range(stars_amount)]
+  coroutines = [blink(canvas, coords[x][0], coords[x][1], random.randint(0, 20), random.choice(SYMBOLS)) for x in range(stars_amount)]
   canvas.border()
+  curses.curs_set(False)
   while True:
     for coroutine in coroutines:
       try:
