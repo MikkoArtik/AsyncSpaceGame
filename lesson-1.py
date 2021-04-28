@@ -78,14 +78,15 @@ def draw_five_stars(canvas):
 
 def random_stars(canvas):
   stars_amount = random.randint(MIN_STARS_COUNT, MAX_STARS_COUNT)
-  row_max, col_max = curses.window.getmaxyx()
+  row_max, col_max = canvas.getmaxyx()
   coords = []
   for i in range(stars_amount):
-    row = random.randint(row_max)
-    col = random.randint(col_max)
+    row = random.randint(1, row_max-2)
+    col = random.randint(1, col_max-2)
     coords.append((row, col))
   
-  coroutines = [blink(canvas, coords[x][0], coords[x][1], random.choice(SYMBOLS)) for x in range(stars_count)]
+  coroutines = [blink(canvas, coords[x][0], coords[x][1], random.choice(SYMBOLS)) for x in range(stars_amount)]
+  canvas.border()
   while True:
     for coroutine in coroutines:
       try:
@@ -94,6 +95,8 @@ def random_stars(canvas):
         coroutines.remove(coroutine)
     if len(coroutines) == 0:
       break
+    canvas.refresh()
+    time.sleep(AMIMATION_DELAY)
 
 
 if __name__ == '__main__':
