@@ -1,8 +1,9 @@
 import time
 import random
-
 import curses
 import asyncio
+
+from fire_animation import fire
 
 
 SYMBOLS = ('+', '*', '.', ':')
@@ -81,6 +82,8 @@ def draw_five_stars(canvas):
 def random_stars(canvas):
   stars_amount = random.randint(MIN_STARS_COUNT, MAX_STARS_COUNT)
   row_max, col_max = canvas.getmaxyx()
+
+  col_center = col_max // 2
   coords = []
   for i in range(stars_amount):
     row = random.randint(1, row_max-2)
@@ -88,6 +91,7 @@ def random_stars(canvas):
     coords.append((row, col))
   
   coroutines = [blink(canvas, coords[x][0], coords[x][1], random.randint(0, 20), random.choice(SYMBOLS)) for x in range(stars_amount)]
+  shot_coroutine = fire(canvas, row_max -1, col_center)
   canvas.border()
   curses.curs_set(False)
   while True:
@@ -98,6 +102,13 @@ def random_stars(canvas):
         coroutines.remove(coroutine)
     if len(coroutines) == 0:
       break
+
+    if shot_coroutine is not None:
+      try:
+        shot_coroutine.send(None)
+      except StopIteration:
+        shot_coroutine = None
+ 
     canvas.refresh()
     time.sleep(AMIMATION_DELAY)
 
