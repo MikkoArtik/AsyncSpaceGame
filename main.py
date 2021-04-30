@@ -77,7 +77,6 @@ def random_stars(canvas):
   stars_amount = random.randint(MIN_STARS_COUNT, MAX_STARS_COUNT)
   x_max, y_max = canvas.getmaxyx()
 
-  col_center = y_max // 2
   coords = []
   for i in range(stars_amount):
     row = random.randint(1, x_max-2)
@@ -85,7 +84,6 @@ def random_stars(canvas):
     coords.append((row, col))
   
   coroutines = [blink(canvas, coords[x][0], coords[x][1], random.randint(0, 20), random.choice(SYMBOLS)) for x in range(stars_amount)]
-  # shot_coroutine = fire(canvas, x_max -1, col_center)
   space_coroutine = space_animation(canvas)
   canvas.border()
   curses.curs_set(False)
@@ -98,12 +96,6 @@ def random_stars(canvas):
     if len(coroutines) == 0:
       break
 
-    # if shot_coroutine is not None:
-    #   try:
-    #     shot_coroutine.send(None)
-    #   except StopIteration:
-    #     shot_coroutine = None
-    
     space_coroutine.send(None)
  
     canvas.refresh()
@@ -127,4 +119,4 @@ def sky(canvas):
 
 if __name__ == '__main__':
   curses.update_lines_cols()
-  curses.wrapper(sky)
+  curses.wrapper(random_stars)
