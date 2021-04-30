@@ -62,9 +62,11 @@ async def star_blink(canvas, y_pos: int, x_pos: int, start_delay: int,
 
 
 class MyGame:
-    def __init__(self):
+    def __init__(self, space_x_speed=1, space_y_speed=1):
         self.space_frames = load_space_frames(SPACE_FRAME_FILES)
         self.space_frame_size = get_space_frame_size(SPACE_FRAME_FILES)
+        self.space_x_speed = space_x_speed
+        self.space_y_speed = space_y_speed
 
     @staticmethod
     def generate_stars(canvas) -> dict:
@@ -80,15 +82,15 @@ class MyGame:
                 stars[(x, y)] = [random.choice(STAR_SYMBOLS), delay]
         return stars
 
-    async def space_animation(self, canvas, x_speed=1, y_speed=1):
+    async def space_animation(self, canvas):
         canvas.nodelay(True)
         y_max, x_max = canvas.getmaxyx()
         y_pos, x_pos = y_max // 2, x_max // 2
         i = 0
         while True:
             y_direction, x_direction, _ = read_controls(canvas)
-            y_pos += y_direction * x_speed
-            x_pos += x_direction * y_speed
+            y_pos += y_direction * self.space_y_speed
+            x_pos += x_direction * self.space_x_speed
             if y_pos < 1:
                 y_pos = 1
             if y_pos > y_max - 2 - self.space_frame_size.dy:
