@@ -68,6 +68,7 @@ class MyGame:
         self.space_frame_size = get_space_frame_size(SPACE_FRAME_FILES)
         self.space_x_speed = space_x_speed
         self.space_y_speed = space_y_speed
+        self.space_coords = (0, 0)
 
     @staticmethod
     def get_window_size(canvas) -> Extent:
@@ -90,26 +91,23 @@ class MyGame:
         return stars
 
     async def space_animation(self, canvas):
-        window_extent = self.get_window_size(canvas)
-        x_max, y_max = window_extent.dx - 1, window_extent.dy - 1
-        x_pos, y_pos = x_max // 2, y_max // 2
+        x_pos, y_pos = self.space_coords
         for frame in cycle(self.space_frames):
-            y_direction, x_direction, _ = read_controls(canvas)
-            y_pos += y_direction * self.space_y_speed
-            x_pos += x_direction * self.space_x_speed
-            if y_pos < 1:
-                y_pos = 1
-            if y_pos > y_max - 1 - self.space_frame_size.dy:
-                y_pos = y_max - 1 - self.space_frame_size.dy
-
-            if x_pos < 1:
-                x_pos = 1
-            if x_pos > x_max - 1 - self.space_frame_size.dx:
-                x_pos = x_max - 1 - self.space_frame_size.dx
-
             draw_frame(canvas, y_pos, x_pos, frame)
             await asyncio.sleep(0)
             draw_frame(canvas, y_pos, x_pos, frame, negative=True)
+
+    @staticmethod
+    def get_corrected_coords(extent: Extent, x: int, y: int) -> tuple:
+        x_min, y_min = 1, 1
+        x_max, y_max = extent.dx - 2, extent.dy - 2
+
+        x = x_min if x < x_min else x
+        x = x_max if x > x_max else x
+
+        y = y_min if y < y_min else y
+        y = y_max if y > y_max else y
+        return x, y
 
     def run(self, canvas):
         canvas.nodelay(True)
@@ -123,8 +121,18 @@ class MyGame:
             symbol, delay = attributes
             coroutines.append(star_blink(canvas, y, x, delay, symbol))
         coroutines.append(self.space_animation(canvas))
-        
+
+        window_extent = self.get_window_size(canvas)
+        x_max, y_max = window_extent.dx - 1, window_extent.dy - 1
+        self.space_coords = (x_max // 2, y_max // 2)
+       
         while True:
+            y_direction, x_direction, _ = read_controls(canvas)
+            x, y = self.space_coords
+            x += x_direction
+            y += y_direction
+            self.space_coords = self.get_corrected_coords(window_extent, x, y)
+
             for coroutine in coroutines.copy():
                 try:
                     coroutine.send(None)
