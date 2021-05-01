@@ -1,8 +1,12 @@
 import curses
 
-from Game import MyGame
+from game import MyGame
+
+
+def main():
+    curses.update_lines_cols()
+    curses.wrapper(MyGame().run)
 
 
 if __name__ == '__main__':
-    curses.update_lines_cols()
-    curses.wrapper(MyGame().run)
+    main()
