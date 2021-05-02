@@ -13,6 +13,7 @@ STAR_SYMBOLS = ('+', '*', '.', ':')
 ANIMATION_DELAY = 0.1
 MAX_STAR_DELAY = 50
 SPACE_FRAME_FILES = ['spaceFrames/frame_0.txt', 'spaceFrames/frame_1.txt']
+BORDER_SIZE = 1
 
 
 def load_space_frames(frame_files: List[str]) -> List[str]:
@@ -83,8 +84,8 @@ class MyGame:
         iter_amount = random.randint(min_stars_count, max_stars_count)
         stars = dict()
         for _ in range(iter_amount):
-            # Пределы по x (1, x_max - 1) и y (1, y_max - 1) - учет borders
-            x, y = random.randint(1, x_max - 1), random.randint(1, y_max - 1)
+            x = random.randint(BORDER_SIZE, x_max - BORDER_SIZE)
+            y = random.randint(BORDER_SIZE, y_max - BORDER_SIZE)
             if (x, y) not in stars:
                 delay = random.randint(0, MAX_STAR_DELAY)
                 stars[(x, y)] = [random.choice(STAR_SYMBOLS), delay]
@@ -98,9 +99,9 @@ class MyGame:
             draw_frame(canvas, y, x, frame, negative=True)
 
     def get_space_corrected_coords(self, extent: Extent, x: int, y: int) -> tuple:
-        x_min, y_min = 1, 1
-        x_max = extent.dx - 2 - self.space_frame_size.dx
-        y_max = extent.dy - 2 - self.space_frame_size.dy
+        x_min, y_min = BORDER_SIZE, BORDER_SIZE
+        x_max = extent.dx - 1 - BORDER_SIZE - self.space_frame_size.dx
+        y_max = extent.dy - 1 - BORDER_SIZE - self.space_frame_size.dy
 
         x = x_min if x < x_min else x
         x = x_max if x > x_max else x
@@ -123,7 +124,8 @@ class MyGame:
         coroutines.append(self.space_animation(canvas))
 
         window_extent = self.get_window_size(canvas)
-        x_max, y_max = window_extent.dx - 1, window_extent.dy - 1
+        x_max = window_extent.dx - 1 - BORDER_SIZE
+        y_max = window_extent.dy - 1 - BORDER_SIZE
         self.space_coords = (x_max // 2, y_max // 2)
        
         while True:
