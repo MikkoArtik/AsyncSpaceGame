@@ -80,9 +80,9 @@ class MyGame:
         x_max, y_max = window_extent.dx - 1, window_extent.dy - 1
         min_stars_count = x_max * y_max // 20
         max_stars_count = x_max * y_max // 10
-        stars_amount = random.randint(min_stars_count, max_stars_count)
+        iter_amount = random.randint(min_stars_count, max_stars_count)
         stars = dict()
-        for _ in range(stars_amount):
+        for _ in range(iter_amount):
             # Пределы по x (1, x_max - 1) и y (1, y_max - 1) - учет borders
             x, y = random.randint(1, x_max - 1), random.randint(1, y_max - 1)
             if (x, y) not in stars:
@@ -91,16 +91,16 @@ class MyGame:
         return stars
 
     async def space_animation(self, canvas):
-        x_pos, y_pos = self.space_coords
         for frame in cycle(self.space_frames):
-            draw_frame(canvas, y_pos, x_pos, frame)
+            x, y = self.space_coords
+            draw_frame(canvas, y, x, frame)
             await asyncio.sleep(0)
-            draw_frame(canvas, y_pos, x_pos, frame, negative=True)
+            draw_frame(canvas, y, x, frame, negative=True)
 
-    @staticmethod
-    def get_corrected_coords(extent: Extent, x: int, y: int) -> tuple:
+    def get_space_corrected_coords(self, extent: Extent, x: int, y: int) -> tuple:
         x_min, y_min = 1, 1
-        x_max, y_max = extent.dx - 2, extent.dy - 2
+        x_max = extent.dx - 2 - self.space_frame_size.dx
+        y_max = extent.dy - 2 - self.space_frame_size.dy
 
         x = x_min if x < x_min else x
         x = x_max if x > x_max else x
@@ -129,9 +129,9 @@ class MyGame:
         while True:
             y_direction, x_direction, _ = read_controls(canvas)
             x, y = self.space_coords
-            x += x_direction
-            y += y_direction
-            self.space_coords = self.get_corrected_coords(window_extent, x, y)
+            x += x_direction * self.space_x_speed
+            y += y_direction * self.space_y_speed
+            self.space_coords = self.get_space_corrected_coords(window_extent, x, y)
 
             for coroutine in coroutines.copy():
                 try:
