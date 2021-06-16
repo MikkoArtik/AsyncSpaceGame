@@ -8,6 +8,8 @@ import asyncio
 from curses_tools import draw_frame
 from curses_tools import read_controls
 
+from space_garbage import fill_orbit_with_garbage
+
 
 STAR_SYMBOLS = ('+', '*', '.', ':')
 ANIMATION_DELAY = 0.1
@@ -70,6 +72,7 @@ class MyGame:
         self.space_x_speed = space_x_speed
         self.space_y_speed = space_y_speed
         self.space_coords = (0, 0)
+        self.coroutines = []
 
     @staticmethod
     def get_window_size(canvas) -> Extent:
@@ -113,35 +116,38 @@ class MyGame:
     def run(self, canvas):
         canvas.nodelay(True)
         curses.curs_set(False)
-        canvas.border()
 
         stars = self.generate_stars(canvas)
-        coroutines = []
         for star_coords, attributes in stars.items():
             x, y = star_coords
             symbol, delay = attributes
-            coroutines.append(star_blink(canvas, y, x, delay, symbol))
-        coroutines.append(self.space_animation(canvas))
+            self.coroutines.append(star_blink(canvas, y, x, delay, symbol))
+        self.coroutines.append(self.space_animation(canvas))
 
         window_extent = self.get_window_size(canvas)
         x_max = window_extent.dx - 1 - BORDER_SIZE
         y_max = window_extent.dy - 1 - BORDER_SIZE
         self.space_coords = (x_max // 2, y_max // 2)
-       
+
+        
+        self.coroutines.append(fill_orbit_with_garbage(canvas, self.coroutines))
+
         while True:
+            canvas.border()
             y_direction, x_direction, _ = read_controls(canvas)
             x, y = self.space_coords
             x += x_direction * self.space_x_speed
             y += y_direction * self.space_y_speed
             self.space_coords = self.get_space_corrected_coords(window_extent, x, y)
 
-            for coroutine in coroutines.copy():
+            for coroutine in self.coroutines.copy():
                 try:
-                    coroutine.send(None)
+                     coroutine.send(None)
                 except StopIteration:
-                    coroutines.remove(coroutine)
-            if len(coroutines) == 0:
+                     self.coroutines.remove(coroutine)
+            if len( self.coroutines) == 0:
                 break
 
             canvas.refresh()
+            canvas.border()
             time.sleep(ANIMATION_DELAY)
