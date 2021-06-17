@@ -9,6 +9,8 @@ from curses_tools import draw_frame
 from curses_tools import read_controls
 
 from space_garbage import fill_orbit_with_garbage
+from physics import update_speed
+from fire_animation import fire
 
 
 STAR_SYMBOLS = ('+', '*', '.', ':')
@@ -42,36 +44,33 @@ def get_space_frame_size(frame_files: List[str]) -> Extent:
     return Extent(max_x, max_y)
 
 
+async def sleep(ticks=1):
+  for i in range(ticks):
+    await asyncio.sleep(0)
+
+
 async def star_blink(canvas, y_pos: int, x_pos: int, start_delay: int,
                      symbol='*'):
-    for _ in range(start_delay):
-        await asyncio.sleep(0)
-
+    await sleep(start_delay)
     while True:
         canvas.addstr(y_pos, x_pos, symbol, curses.A_DIM)
-        for _ in range(20):
-            await asyncio.sleep(0)
-
+        await sleep(20)
         canvas.addstr(y_pos, x_pos, symbol)
-        for _ in range(3):
-            await asyncio.sleep(0)
-
+        await sleep(3)
         canvas.addstr(y_pos, x_pos, symbol, curses.A_BOLD)
-        for _ in range(5):
-            await asyncio.sleep(0)
-
+        await sleep(5)
         canvas.addstr(y_pos, x_pos, symbol)
-        for _ in range(3):
-            await asyncio.sleep(0)
+        await sleep(3)
 
 
 class MyGame:
-    def __init__(self, space_x_speed=1, space_y_speed=1):
+    def __init__(self):
         self.space_frames = load_space_frames(SPACE_FRAME_FILES)
         self.space_frame_size = get_space_frame_size(SPACE_FRAME_FILES)
-        self.space_x_speed = space_x_speed
-        self.space_y_speed = space_y_speed
+        self.space_x_speed = 0
+        self.space_y_speed = 0
         self.space_coords = (0, 0)
+        self.is_shot = False
         self.coroutines = []
 
     @staticmethod
@@ -98,8 +97,14 @@ class MyGame:
         for frame in cycle(self.space_frames):
             x, y = self.space_coords
             draw_frame(canvas, y, x, frame)
-            await asyncio.sleep(0)
+            await sleep(1)
             draw_frame(canvas, y, x, frame, negative=True)
+
+    async def add_fire(self, canvas):
+      while True:
+        if self.is_shot:
+          self.coroutines.append(fire(canvas, self.space_coords[1], self.space_coords[0] + 2))
+        await asyncio.sleep(0)
 
     def get_space_corrected_coords(self, extent: Extent, x: int, y: int) -> tuple:
         x_min, y_min = BORDER_SIZE, BORDER_SIZE
@@ -128,16 +133,23 @@ class MyGame:
         x_max = window_extent.dx - 1 - BORDER_SIZE
         y_max = window_extent.dy - 1 - BORDER_SIZE
         self.space_coords = (x_max // 2, y_max // 2)
-
         
         self.coroutines.append(fill_orbit_with_garbage(canvas, self.coroutines))
+        self.coroutines.append(self.add_fire(canvas))
 
         while True:
             canvas.border()
-            y_direction, x_direction, _ = read_controls(canvas)
+            y_direction, x_direction, is_shot = read_controls(canvas)
+            self.is_shot = is_shot
+
             x, y = self.space_coords
-            x += x_direction * self.space_x_speed
-            y += y_direction * self.space_y_speed
+            v_x, v_y = self.space_x_speed, self.space_y_speed
+
+            v_y, v_x = update_speed(v_y, v_x, y_direction, x_direction)
+            x += v_x
+            y += v_y
+
+            self.space_x_speed, self.space_y_speed = v_x, v_y
             self.space_coords = self.get_space_corrected_coords(window_extent, x, y)
 
             for coroutine in self.coroutines.copy():
