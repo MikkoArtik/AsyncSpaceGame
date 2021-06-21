@@ -11,6 +11,7 @@ from curses_tools import read_controls
 from space_garbage import fill_orbit_with_garbage
 from physics import update_speed
 from fire_animation import fire
+from obstacles import show_obstacles
 
 
 STAR_SYMBOLS = ('+', '*', '.', ':')
@@ -72,6 +73,8 @@ class MyGame:
         self.space_coords = (0, 0)
         self.is_shot = False
         self.coroutines = []
+        self.obstacles = dict()
+        self.destroyed_obstacle_ids = set()
 
     @staticmethod
     def get_window_size(canvas) -> Extent:
@@ -103,7 +106,10 @@ class MyGame:
     async def add_fire(self, canvas):
       while True:
         if self.is_shot:
-          self.coroutines.append(fire(canvas, self.space_coords[1], self.space_coords[0] + 2))
+          self.coroutines.append(
+            fire(canvas, self.space_coords[1], self.space_coords[0] + 2, 
+                 self.obstacles, self.destroyed_obstacle_ids)
+            )
         await asyncio.sleep(0)
 
     def get_space_corrected_coords(self, extent: Extent, x: int, y: int) -> tuple:
@@ -134,11 +140,11 @@ class MyGame:
         y_max = window_extent.dy - 1 - BORDER_SIZE
         self.space_coords = (x_max // 2, y_max // 2)
         
-        self.coroutines.append(fill_orbit_with_garbage(canvas, self.coroutines))
+        self.coroutines.append(fill_orbit_with_garbage(canvas, self.coroutines, self.obstacles, self.destroyed_obstacle_ids))
         self.coroutines.append(self.add_fire(canvas))
+        # self.coroutines.append(show_obstacles(canvas, self.obstacles.values()))
 
         while True:
-            canvas.border()
             y_direction, x_direction, is_shot = read_controls(canvas)
             self.is_shot = is_shot
 
