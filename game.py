@@ -11,7 +11,6 @@ from curses_tools import read_controls
 from space_garbage import fill_orbit_with_garbage
 from physics import update_speed
 from fire_animation import fire
-from obstacles import show_obstacles
 
 
 STAR_SYMBOLS = ('+', '*', '.', ':')
@@ -19,6 +18,8 @@ ANIMATION_DELAY = 0.1
 MAX_STAR_DELAY = 50
 SPACE_FRAME_FILES = ['spaceFrames/frame_0.txt', 'spaceFrames/frame_1.txt']
 BORDER_SIZE = 1
+
+GAME_OVER_FRAME = 'otherFrames/game_over.txt'
 
 
 def load_space_frames(frame_files: List[str]) -> List[str]:
@@ -32,6 +33,15 @@ def load_space_frames(frame_files: List[str]) -> List[str]:
 class Extent(NamedTuple):
     dx: int
     dy: int
+
+
+def load_game_over_frame(frame_file=GAME_OVER_FRAME):
+  lines = []
+  with open(frame_file, 'r') as f:
+    for line in f:
+      line = line.rstrip()
+      lines.append(line)
+  return lines
 
 
 def get_space_frame_size(frame_files: List[str]) -> Extent:
@@ -68,6 +78,7 @@ class MyGame:
     def __init__(self):
         self.space_frames = load_space_frames(SPACE_FRAME_FILES)
         self.space_frame_size = get_space_frame_size(SPACE_FRAME_FILES)
+        self.game_over_frame = load_game_over_frame()
         self.space_x_speed = 0
         self.space_y_speed = 0
         self.space_coords = (0, 0)
@@ -75,6 +86,8 @@ class MyGame:
         self.coroutines = []
         self.obstacles = dict()
         self.destroyed_obstacle_ids = set()
+        self.is_space_died = False
+        self.game_over_text_position = None
 
     @staticmethod
     def get_window_size(canvas) -> Extent:
@@ -99,6 +112,15 @@ class MyGame:
     async def space_animation(self, canvas):
         for frame in cycle(self.space_frames):
             x, y = self.space_coords
+
+            for obstacle in self.obstacles.values():
+              if obstacle.has_collision(y, x, self.space_frame_size.dy, self.space_frame_size.dx):
+                self.is_space_died = True
+                break
+            
+            if self.is_space_died:
+              break
+
             draw_frame(canvas, y, x, frame)
             await sleep(1)
             draw_frame(canvas, y, x, frame, negative=True)
@@ -124,6 +146,28 @@ class MyGame:
         y = y_max if y > y_max else y
         return x, y
 
+    def get_game_over_text_position(self, canvas):
+      if not self.game_over_text_position:
+        window_size = self.get_window_size(canvas)
+        canvas_x_mid = window_size.dx / 2
+        canvas_y_mid = window_size.dy / 2
+
+        label_width_mid = len(self.game_over_frame[1]) / 2
+        label_height_mid = len(self.game_over_frame) / 2
+
+        x_mid = int(canvas_x_mid - label_width_mid)
+        y_mid = int(canvas_y_mid - label_height_mid)
+        self.game_over_text_position = (x_mid, y_mid)
+      return self.game_over_text_position
+
+    async def show_game_over(self, canvas):
+      x_pos, y_pos = self.get_game_over_text_position(canvas)
+      frame_text = '\n'.join(self.game_over_frame)
+      while True:
+        if self.is_space_died:
+          draw_frame(canvas, y_pos, x_pos, frame_text)
+        await asyncio.sleep(0)
+      
     def run(self, canvas):
         canvas.nodelay(True)
         curses.curs_set(False)
@@ -142,21 +186,22 @@ class MyGame:
         
         self.coroutines.append(fill_orbit_with_garbage(canvas, self.coroutines, self.obstacles, self.destroyed_obstacle_ids))
         self.coroutines.append(self.add_fire(canvas))
-        # self.coroutines.append(show_obstacles(canvas, self.obstacles.values()))
+        self.coroutines.append(self.show_game_over(canvas))
 
         while True:
-            y_direction, x_direction, is_shot = read_controls(canvas)
-            self.is_shot = is_shot
+            if not self.is_space_died:
+              y_direction, x_direction, is_shot = read_controls(canvas)
+              self.is_shot = is_shot
 
-            x, y = self.space_coords
-            v_x, v_y = self.space_x_speed, self.space_y_speed
+              x, y = self.space_coords
+              v_x, v_y = self.space_x_speed, self.space_y_speed
 
-            v_y, v_x = update_speed(v_y, v_x, y_direction, x_direction)
-            x += v_x
-            y += v_y
+              v_y, v_x = update_speed(v_y, v_x, y_direction, x_direction)
+              x += v_x
+              y += v_y
 
-            self.space_x_speed, self.space_y_speed = v_x, v_y
-            self.space_coords = self.get_space_corrected_coords(window_extent, x, y)
+              self.space_x_speed, self.space_y_speed = v_x, v_y
+              self.space_coords = self.get_space_corrected_coords(window_extent, x, y)
 
             for coroutine in self.coroutines.copy():
                 try:

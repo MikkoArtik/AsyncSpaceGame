@@ -76,5 +76,4 @@ async def fill_orbit_with_garbage(canvas, coroutines, obstacles, destoyed_obstac
     
     coroutine = fly_garbage(canvas, start_x, frame, id_val, obstacles, destoyed_obstacle_ids, speed)
     coroutines.append(coroutine)
-
     id_val += 1
