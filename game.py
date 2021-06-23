@@ -1,6 +1,7 @@
 from typing import List, NamedTuple
 import time
 import random
+from random import randint
 import curses
 from itertools import cycle
 import asyncio
@@ -8,7 +9,8 @@ import asyncio
 from curses_tools import draw_frame
 from curses_tools import read_controls
 
-from space_garbage import fill_orbit_with_garbage
+from space_garbage import TRASH_FRAMES
+from space_garbage import fly_garbage
 from physics import update_speed
 from fire_animation import fire
 
@@ -20,6 +22,20 @@ SPACE_FRAME_FILES = ['spaceFrames/frame_0.txt', 'spaceFrames/frame_1.txt']
 BORDER_SIZE = 1
 
 GAME_OVER_FRAME = 'otherFrames/game_over.txt'
+ONE_YEAR_DURATION_IN_SECONDS = 1.5
+
+PHRASES = {
+    # Только на английском, Repl.it ломается на кириллице
+    1957: "First Sputnik",
+    1961: "Gagarin flew!",
+    1969: "Armstrong got on the moon!",
+    1971: "First orbital space station Salute-1",
+    1981: "Flight of the Shuttle Columbia",
+    1998: 'ISS start building',
+    2011: 'Messenger launch to Mercury',
+    2020: "Take the plasma gun! Shoot the garbage!",
+}
+
 
 
 def load_space_frames(frame_files: List[str]) -> List[str]:
@@ -88,11 +104,29 @@ class MyGame:
         self.destroyed_obstacle_ids = set()
         self.is_space_died = False
         self.game_over_text_position = None
+        self.current_year = 1957
 
     @staticmethod
     def get_window_size(canvas) -> Extent:
       height, width =  canvas.getmaxyx()
       return Extent(width, height)
+
+    @property
+    def garbage_delay_tics(self) -> int:
+      if self.current_year < 1961:
+          return None
+      elif self.current_year < 1969:
+          return 20
+      elif self.current_year < 1981:
+          return 14
+      elif self.current_year < 1995:
+          return 10
+      elif self.current_year < 2010:
+          return 8
+      elif self.current_year < 2020:
+          return 6
+      else:
+          return 2
 
     def generate_stars(self, canvas) -> dict:
         window_extent = self.get_window_size(canvas)
@@ -109,6 +143,19 @@ class MyGame:
                 stars[(x, y)] = [random.choice(STAR_SYMBOLS), delay]
         return stars
 
+    async def show_history_fact(self, canvas):
+      window_extent = self.get_window_size(canvas)
+      x_pos, y_pos = 1, window_extent.dy - 2
+      while self.current_year <= 2020 and not self.is_space_died:
+        draw_frame(canvas, 0, 0, str(self.current_year))
+        text = PHRASES.get(self.current_year, '')
+        if text:
+          for _ in range(10):
+            draw_frame(canvas, y_pos, x_pos, text)
+            await sleep(1)
+          draw_frame(canvas, y_pos, x_pos, text, negative=True)
+        await sleep(1)
+        
     async def space_animation(self, canvas):
         for frame in cycle(self.space_frames):
             x, y = self.space_coords
@@ -145,6 +192,24 @@ class MyGame:
         y = y_min if y < y_min else y
         y = y_max if y > y_max else y
         return x, y
+
+    async def fill_orbit_with_garbage(self, canvas, speed=0.5):
+      id_val = 0
+      while True:
+        if not self.garbage_delay_tics:
+          await sleep(1)
+          continue
+        else:
+          await sleep(self.garbage_delay_tics)
+
+        max_x = canvas.getmaxyx()[1] - 2
+        start_x = randint(1, max_x)
+        frame_index = randint(0, len(TRASH_FRAMES) - 1)
+        frame = TRASH_FRAMES[frame_index]
+        
+        coroutine = fly_garbage(canvas, start_x, frame, id_val, self.obstacles, self.destroyed_obstacle_ids, speed)
+        self.coroutines.append(coroutine)
+        id_val += 1
 
     def get_game_over_text_position(self, canvas):
       if not self.game_over_text_position:
@@ -184,14 +249,16 @@ class MyGame:
         y_max = window_extent.dy - 1 - BORDER_SIZE
         self.space_coords = (x_max // 2, y_max // 2)
         
-        self.coroutines.append(fill_orbit_with_garbage(canvas, self.coroutines, self.obstacles, self.destroyed_obstacle_ids))
+        self.coroutines.append(self.fill_orbit_with_garbage(canvas))
         self.coroutines.append(self.add_fire(canvas))
         self.coroutines.append(self.show_game_over(canvas))
+        self.coroutines.append(self.show_history_fact(canvas))
 
+        snap_index = 0
         while True:
             if not self.is_space_died:
               y_direction, x_direction, is_shot = read_controls(canvas)
-              self.is_shot = is_shot
+              self.is_shot = is_shot and self.current_year > 2019
 
               x, y = self.space_coords
               v_x, v_y = self.space_x_speed, self.space_y_speed
@@ -214,3 +281,6 @@ class MyGame:
             canvas.refresh()
             canvas.border()
             time.sleep(ANIMATION_DELAY)
+            if not snap_index % (ONE_YEAR_DURATION_IN_SECONDS / ANIMATION_DELAY):
+              self.current_year += 1
+            snap_index += 1

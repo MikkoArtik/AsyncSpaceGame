@@ -1,7 +1,5 @@
 import asyncio
-
 from typing import NamedTuple
-from random import randint
 
 from curses_tools import draw_frame
 from obstacles import Obstacle
@@ -60,20 +58,3 @@ async def fly_garbage(canvas, column: int, garbage_frame: TrashFrame, obstacle_i
         obstacles[obstacle_id].row = row
 
     del obstacles[obstacle_id]
-        
-
-async def fill_orbit_with_garbage(canvas, coroutines, obstacles, destoyed_obstacle_ids: set,speed=0.5, max_delay=30):
-  id_val = 0
-  while True:
-    delay = randint(0, max_delay)
-    for _ in range(delay):
-      await asyncio.sleep(0)
-
-    max_x = canvas.getmaxyx()[1] - 2
-    start_x = randint(1, max_x)
-    frame_index = randint(0, len(TRASH_FRAMES) - 1)
-    frame = TRASH_FRAMES[frame_index]
-    
-    coroutine = fly_garbage(canvas, start_x, frame, id_val, obstacles, destoyed_obstacle_ids, speed)
-    coroutines.append(coroutine)
-    id_val += 1

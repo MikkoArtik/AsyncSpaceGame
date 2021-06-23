@@ -1,5 +1,6 @@
 import math
 
+
 def _limit(value, min_value, max_value):
     """Limit value by min_value and max_value."""
 
