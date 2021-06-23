@@ -185,7 +185,7 @@ class MyGame:
                 self.coroutines.append(coroutine)
             await sleep(1)
 
-    async def fill_orbit_with_garbage(self, speed=0.5):
+    async def fill_orbit_with_garbage(self):
         id_val = 0
         while True:
             if self.garbage_delay_tics < 0:
@@ -200,7 +200,7 @@ class MyGame:
 
             coroutine = fly_garbage(self.canvas, start_x, frame, id_val,
                                     self.obstacles,
-                                    self.destroyed_obstacle_ids, speed)
+                                    self.destroyed_obstacle_ids)
             self.coroutines.append(coroutine)
             id_val += 1
 
@@ -221,8 +221,8 @@ class MyGame:
                 draw_frame(self.canvas, y_pos, x_pos, frame_text)
             await asyncio.sleep(0)
 
-    async def show_history_fact(self):
-        new_window = self.canvas.derwin(1, self.window_size.dy - 2, 1, 1)
+    async def show_year_label(self):
+        new_window = self.canvas.derwin(1, self.window_size.dx - 2, 1, 1)
         while not self.is_space_died:
             history_fact = PHRASES.get(self.current_year, '')
             text = f'Year: {self.current_year} {history_fact}'
@@ -253,7 +253,7 @@ class MyGame:
         self.coroutines.append(self.fill_orbit_with_garbage())
         self.coroutines.append(self.add_fire())
         self.coroutines.append(self.show_game_over())
-        self.coroutines.append(self.show_history_fact())
+        self.coroutines.append(self.show_year_label())
 
         snap_index = 0
         while True:

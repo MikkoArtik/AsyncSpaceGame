@@ -1,5 +1,6 @@
 import asyncio
 from typing import NamedTuple
+from random import random
 
 from curses_tools import draw_frame
 from obstacles import Obstacle
@@ -35,7 +36,7 @@ TRASH_FRAMES = [load_frame(x) for x in TRASH_FRAMES_FILES]
 
 async def fly_garbage(canvas, column: int, garbage_frame: TrashFrame,
                       obstacle_id: int, obstacles: dict,
-                      destoyed_obstacle_ids: set, speed=0.5):
+                      destoyed_obstacle_ids: set):
     """
     Animate garbage, flying from top to bottom.
     Сolumn position will stay same, as specified on start.
@@ -47,6 +48,8 @@ async def fly_garbage(canvas, column: int, garbage_frame: TrashFrame,
 
     obstacles[obstacle_id] = Obstacle(0, column, garbage_frame.height,
                                       garbage_frame.width)
+
+    speed = 0.01 + random()
 
     row = 0
     while row < rows_number:
